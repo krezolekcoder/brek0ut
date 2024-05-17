@@ -41,6 +41,17 @@ int main(void) {
     // Update
     //----------------------------------------------------------------------------------
     //----------------------------------------------------------------------------------
+
+    if (IsKeyDown(KEY_A) || IsKeyDown(KEY_H))
+      paddle.x -= 2;
+    if (IsKeyDown(KEY_D) || IsKeyDown(KEY_L))
+      paddle.x += 2;
+
+    if (paddle.x < 0)
+      paddle.x = 0;
+    if (paddle.x + PADDLE_WIDTH > SCREEN_WIDTH)
+      paddle.x = SCREEN_WIDTH - PADDLE_WIDTH;
+
     // Draw
     //----------------------------------------------------------------------------------
     //
