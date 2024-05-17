@@ -1,4 +1,5 @@
 #include "raylib.h"
+#include <stdint.h>
 #include <stdio.h>
 
 #define SCREEN_WIDTH (640U)
@@ -16,11 +17,27 @@
 #define PADDLE_Y_BASE_POS (SCREEN_HEIGHT - PADDLE_HEIGHT)
 #define PADDLE_X_BASE_POS ((SCREEN_WIDTH / 2U) - (PADDLE_WIDTH / 2U))
 
+#define BALL_RADIUS (20U)
+#define BALL_X_BASE (SCREEN_WIDTH / 2U)
+#define BALL_Y_BASE (BLOCK_HEIGHT * BLOCK_COLS + 100)
+
+typedef struct BallMovement {
+  Vector2 velocity;
+} BallMovement_t;
+
+typedef struct Ball {
+  float x;
+  float y;
+  float radius;
+} Ball_t;
+
 Rectangle rec_grid[BLOCK_ROWS * BLOCK_COLS];
 Rectangle paddle = {.x = PADDLE_X_BASE_POS,
                     .y = PADDLE_Y_BASE_POS,
                     .width = PADDLE_WIDTH,
                     .height = PADDLE_HEIGHT};
+Ball_t ball = {.x = BALL_X_BASE, .y = BALL_Y_BASE, .radius = BALL_RADIUS};
+BallMovement_t ball_velocity = {.velocity.x = 1.0f, .velocity.y = 1.0f};
 static void GridInitialize(void);
 static void GridDraw(void);
 // Program main entry point
@@ -52,6 +69,25 @@ int main(void) {
     if (paddle.x + PADDLE_WIDTH > SCREEN_WIDTH)
       paddle.x = SCREEN_WIDTH - PADDLE_WIDTH;
 
+    ball.x += ball_velocity.velocity.x;
+    ball.y += ball_velocity.velocity.y;
+
+    if (ball.x - ball.radius < 0.0f) {
+      ball.x = ball.radius;
+      ball_velocity.velocity.x *= -1.0f;
+    } else if (ball.x + ball.radius > (float)SCREEN_WIDTH) {
+      ball.x = (float)(SCREEN_WIDTH - (int)ball.radius);
+      ball_velocity.velocity.x *= -1.0f;
+    }
+
+    if (ball.y - ball.radius < 0.0f) {
+      ball.y = ball.radius;
+      ball_velocity.velocity.y *= -1.0f;
+    } else if (ball.y + ball.radius > (float)SCREEN_HEIGHT) {
+      ball.y = (float)(SCREEN_HEIGHT - (int)ball.radius);
+      ball_velocity.velocity.y *= -1.0f;
+    }
+
     // Draw
     //----------------------------------------------------------------------------------
     //
@@ -61,6 +97,8 @@ int main(void) {
 
     GridDraw();
     DrawRectangleRounded(paddle, 0.5f, 10, PINK);
+    DrawCircle((int)ball.x, (int)ball.y, (int)ball.radius, GREEN);
+
     EndDrawing();
     //----------------------------------------------------------------------------------
   }
