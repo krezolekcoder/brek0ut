@@ -80,6 +80,7 @@ int main(void) {
       ball_velocity.velocity.x *= -1.0f;
     }
 
+    // collision with screen rectangle
     if (ball.y - ball.radius < 0.0f) {
       ball.y = ball.radius;
       ball_velocity.velocity.y *= -1.0f;
@@ -88,6 +89,13 @@ int main(void) {
       ball_velocity.velocity.y *= -1.0f;
     }
 
+    // collisions with paddle
+    if ((ball.x + ball.radius >= paddle.x &&
+         ball.x + (ball.radius <= paddle.x + PADDLE_WIDTH)) &&
+        (ball.y + ball.radius >= paddle.y)) {
+      ball_velocity.velocity.y *= -1.0f;
+      // ball_velocity.velocity.x *= -1.0f;
+    }
     // Draw
     //----------------------------------------------------------------------------------
     //
