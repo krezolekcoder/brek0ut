@@ -1,14 +1,22 @@
+/*******************************************************************************************
+ *
+ *   raylib [shapes] example - Colors palette
+ *
+ *   Example originally created with raylib 1.0, last time updated with
+ *raylib 2.5
+ *
+ *   Example licensed under an unmodified zlib/libpng license, which is an
+ *OSI-certified, BSD-like license that allows static linking with closed source
+ *software
+ *
+ *   Copyright (c) 2014-2024 Ramon Santamaria (@raysan5)
+ *
+ ********************************************************************************************/
+
 #include "raylib.h"
-#include <stdint.h>
-#include <stdio.h>
 
-#define SCREEN_WIDTH (640U)
-#define SCREEN_HEIGHT (640U)
-#define LED_CNT (8U)
-#define LED_RADIUSS (SCREEN_WIDTH / LED_CNT)
-
-#define BLOCK_ROWS (6U)
-#define BLOCK_COLS (8U)
+#define BLOCK_ROWS (5U)
+#define BLOCK_COLS (7U)
 #define BLOCK_WIDTH (50U)
 #define BLOCK_HEIGHT (30U)
 
@@ -21,91 +29,77 @@
 #define BALL_X_BASE (SCREEN_WIDTH / 2U)
 #define BALL_Y_BASE (BLOCK_HEIGHT * BLOCK_COLS + 100)
 
-typedef struct BallMovement {
-  Vector2 velocity;
-} BallMovement_t;
-
-typedef struct Ball {
-  float x;
-  float y;
-  float radius;
-} Ball_t;
-
-Rectangle rec_grid[BLOCK_ROWS * BLOCK_COLS];
-Rectangle paddle = {.x = PADDLE_X_BASE_POS,
-                    .y = PADDLE_Y_BASE_POS,
-                    .width = PADDLE_WIDTH,
-                    .height = PADDLE_HEIGHT};
-Ball_t ball = {.x = BALL_X_BASE, .y = BALL_Y_BASE, .radius = BALL_RADIUS};
-BallMovement_t ball_velocity = {.velocity.x = 1.0f, .velocity.y = 1.0f};
-static void GridInitialize(void);
-static void GridDraw(void);
+static Color colors[BLOCK_ROWS * BLOCK_COLS];
+static Rectangle colorsRecs[BLOCK_ROWS * BLOCK_COLS];
+//------------------------------------------------------------------------------------
 // Program main entry point
 //------------------------------------------------------------------------------------
 int main(void) {
   // Initialization
   //--------------------------------------------------------------------------------------
-  InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT,
-             "raylib [core] example - keyboard input");
+  const int screenWidth = 800;
+  const int screenHeight = 800;
 
-  SetTargetFPS(120); // Set our game to run at 60 frames-per-second
+  InitWindow(screenWidth, screenHeight,
+             "raylib [shapes] example - colors palette");
+
+  for (int i = 0; i < BLOCK_COLS * BLOCK_ROWS; i++) {
+    colors[i] = YELLOW;
+  }
+
+  // Fills colorsRecs data (for every rectangle)
+  for (int i = 0; i < BLOCK_COLS * BLOCK_ROWS; i++) {
+    colorsRecs[i].width = 100.0f;
+    colorsRecs[i].height = 50.0f;
+    colorsRecs[i].x = 20.0f + colorsRecs[i].width * (i % BLOCK_COLS) +
+                      30.0f * (i % BLOCK_COLS);
+    colorsRecs[i].y = 80.0f + colorsRecs[i].height * (i / BLOCK_COLS) +
+                      20.0f * (i / BLOCK_COLS);
+  }
+
+  int colorState[BLOCK_COLS * BLOCK_ROWS] = {
+      0}; // Color state: 0-DEFAULT, 1-MOUSE_HOVER
+
+  Vector2 mousePoint = {0.0f, 0.0f};
+
+  SetTargetFPS(60); // Set our game to run at 60 frames-per-second
   //--------------------------------------------------------------------------------------
-  GridInitialize();
 
   // Main game loop
   while (!WindowShouldClose()) // Detect window close button or ESC key
   {
     // Update
     //----------------------------------------------------------------------------------
+    mousePoint = GetMousePosition();
+
+    DrawCircle(mousePoint.x, mousePoint.y, 10.0f, BLUE);
+    for (int i = 0; i < BLOCK_COLS * BLOCK_ROWS; i++) {
+      if (CheckCollisionCircleRec(mousePoint, 10.0f, colorsRecs[i])) {
+        colorState[i] = 1;
+        colors[i] = BLUE;
+      } else {
+        colorState[i] = 0;
+        colors[i] = YELLOW;
+      }
+    }
     //----------------------------------------------------------------------------------
-
-    if (IsKeyDown(KEY_A) || IsKeyDown(KEY_H))
-      paddle.x -= 2;
-    if (IsKeyDown(KEY_D) || IsKeyDown(KEY_L))
-      paddle.x += 2;
-
-    if (paddle.x < 0)
-      paddle.x = 0;
-    if (paddle.x + PADDLE_WIDTH > SCREEN_WIDTH)
-      paddle.x = SCREEN_WIDTH - PADDLE_WIDTH;
-
-    ball.x += ball_velocity.velocity.x;
-    ball.y += ball_velocity.velocity.y;
-
-    if (ball.x - ball.radius < 0.0f) {
-      ball.x = ball.radius;
-      ball_velocity.velocity.x *= -1.0f;
-    } else if (ball.x + ball.radius > (float)SCREEN_WIDTH) {
-      ball.x = (float)(SCREEN_WIDTH - (int)ball.radius);
-      ball_velocity.velocity.x *= -1.0f;
-    }
-
-    // collision with screen rectangle
-    if (ball.y - ball.radius < 0.0f) {
-      ball.y = ball.radius;
-      ball_velocity.velocity.y *= -1.0f;
-    } else if (ball.y + ball.radius > (float)SCREEN_HEIGHT) {
-      ball.y = (float)(SCREEN_HEIGHT - (int)ball.radius);
-      ball_velocity.velocity.y *= -1.0f;
-    }
-
-    // collisions with paddle
-    if ((ball.x + ball.radius >= paddle.x &&
-         ball.x + (ball.radius <= paddle.x + PADDLE_WIDTH)) &&
-        (ball.y + ball.radius >= paddle.y)) {
-      ball_velocity.velocity.y *= -1.0f;
-      // ball_velocity.velocity.x *= -1.0f;
-    }
     // Draw
     //----------------------------------------------------------------------------------
-    //
-    //
     BeginDrawing();
+
     ClearBackground(RAYWHITE);
 
-    GridDraw();
-    DrawRectangleRounded(paddle, 0.5f, 10, PINK);
-    DrawCircle((int)ball.x, (int)ball.y, (int)ball.radius, GREEN);
+    DrawText("raylib colors palette", 28, 42, 20, BLACK);
+    DrawText("press SPACE to see all colors", GetScreenWidth() - 180,
+             GetScreenHeight() - 40, 10, GRAY);
+
+    for (int i = 0; i < BLOCK_COLS * BLOCK_ROWS; i++) // Draw all rectangles
+    {
+      // DrawRectangleRec(colorsRecs[i],
+      //                  Fade(colors[i], colorState[i] ? 0.6f : 1.0f));
+
+      DrawRectangleRec(colorsRecs[i], colors[i]);
+    }
 
     EndDrawing();
     //----------------------------------------------------------------------------------
@@ -117,30 +111,4 @@ int main(void) {
   //--------------------------------------------------------------------------------------
 
   return 0;
-}
-
-static void GridInitialize(void) {
-
-  for (int i = 0; i < BLOCK_COLS; i++) {
-    for (int j = 0; j < BLOCK_ROWS; j++) {
-      uint32_t coord = i * BLOCK_COLS + j;
-
-      printf("i %d j %d coord %d \r\n", i, j, coord);
-      rec_grid[coord].height = BLOCK_HEIGHT;
-      rec_grid[coord].width = BLOCK_WIDTH;
-      rec_grid[coord].x = i * (BLOCK_WIDTH + 20) + 50;
-      rec_grid[coord].y = j * (BLOCK_HEIGHT + 20) + 50;
-    }
-  }
-}
-
-static void GridDraw(void) {
-
-  for (int i = 0; i < BLOCK_COLS; i++) {
-    for (int j = 0; j < BLOCK_ROWS; j++) {
-      uint32_t coord = i * BLOCK_COLS + j;
-      DrawRectangle(rec_grid[coord].x, rec_grid[coord].y, rec_grid[coord].width,
-                    rec_grid[coord].height, BLUE);
-    }
-  }
 }
