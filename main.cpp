@@ -62,18 +62,16 @@ collision_brick_t CheckBallCollisionWithBrick(Vector2 ball, Rectangle brick) {
                ((ball.x - BALL_RADIUS) >= (brick.x + brick.width - 10))) {
       return COLLISION_BRICK_RIGHT;
     }
+  } else if ((ball.x - BALL_RADIUS >= brick.x) &&
+             (ball.x + BALL_RADIUS <= brick.x + brick.width)) {
+    if ((ball.y + BALL_RADIUS >= brick.y) &&
+        (ball.y + BALL_RADIUS <= brick.y + 10)) {
+      return COLLISION_BRICK_UP;
+    } else if (((ball.y - BALL_RADIUS) <= (brick.y + brick.height)) &&
+               ((ball.y - BALL_RADIUS) >= (brick.y + brick.height - 10))) {
+      return COLLISION_BRICK_DOWN;
+    }
   }
-  // // Collision from the left side of the brick
-  // if ((ball.x + BALL_RADIUS >= brick.x) &&
-  //     ((ball.y - BALL_RADIUS >= brick.y) &&
-  //      (ball.y + BALL_RADIUS <= brick.y + brick.height)))
-  //   return COLLISION_BRICK_LEFT;
-  // if (ball.x - BALL_RADIUS <= brick.x + brick.width)
-  //   return COLLISION_BRICK_RIGHT;
-  // if (ball.y + BALL_RADIUS >= brick.y)
-  //   return COLLISION_BRICK_UP;
-  // if (ball.y - BALL_RADIUS <= brick.y + brick.width)
-  //   return COLLISION_BRICK_LEFT;
 
   return COLLISION_NONE;
 }
