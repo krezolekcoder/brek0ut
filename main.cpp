@@ -123,10 +123,13 @@ static void GridInitialize(void) {
 
   for (int i = 0; i < BLOCK_COLS; i++) {
     for (int j = 0; j < BLOCK_ROWS; j++) {
-      rec_grid[i * BLOCK_COLS + j].height = BLOCK_HEIGHT;
-      rec_grid[i * BLOCK_COLS + j].width = BLOCK_WIDTH;
-      rec_grid[i * BLOCK_COLS + j].x = i * (BLOCK_WIDTH + 20) + 50;
-      rec_grid[i * BLOCK_COLS + j].y = j * (BLOCK_HEIGHT + 20) + 50;
+      uint32_t coord = i * BLOCK_COLS + j;
+
+      printf("i %d j %d coord %d \r\n", i, j, coord);
+      rec_grid[coord].height = BLOCK_HEIGHT;
+      rec_grid[coord].width = BLOCK_WIDTH;
+      rec_grid[coord].x = i * (BLOCK_WIDTH + 20) + 50;
+      rec_grid[coord].y = j * (BLOCK_HEIGHT + 20) + 50;
     }
   }
 }
@@ -135,10 +138,9 @@ static void GridDraw(void) {
 
   for (int i = 0; i < BLOCK_COLS; i++) {
     for (int j = 0; j < BLOCK_ROWS; j++) {
-      DrawRectangle(rec_grid[i * BLOCK_COLS + j].x,
-                    rec_grid[i * BLOCK_COLS + j].y,
-                    rec_grid[i * BLOCK_COLS + j].width,
-                    rec_grid[i * BLOCK_COLS + j].height, BLUE);
+      uint32_t coord = i * BLOCK_COLS + j;
+      DrawRectangle(rec_grid[coord].x, rec_grid[coord].y, rec_grid[coord].width,
+                    rec_grid[coord].height, BLUE);
     }
   }
 }
