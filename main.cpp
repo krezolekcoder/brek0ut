@@ -25,7 +25,7 @@
 #define BLOCK_HEIGHT (30U)
 
 #define PADDLE_HEIGHT (30.0f)
-#define PADDLE_WIDTH (100.0f)
+#define PADDLE_WIDTH (130.0f)
 #define PADDLE_Y_BASE_POS (SCREEN_HEIGHT - PADDLE_HEIGHT)
 #define PADDLE_X_BASE_POS ((SCREEN_WIDTH / 2U) - (PADDLE_WIDTH / 2U))
 
@@ -38,20 +38,23 @@
 static Color colors[BLOCK_ROWS * BLOCK_COLS];
 static Rectangle colorsRecs[BLOCK_ROWS * BLOCK_COLS];
 static uint32_t recHealth[BLOCK_ROWS * BLOCK_COLS];
-static Rectangle paddle;
+static Rectangle paddle = {.x = PADDLE_X_BASE_POS,
+                           .y = PADDLE_Y_BASE_POS,
+                           .width = PADDLE_WIDTH,
+                           .height = PADDLE_HEIGHT};
 static Vector2 ball = {.x = BALL_X_BASE, .y = BALL_Y_BASE};
 static Vector2 ballVelocity = {.x = DEFAULT_BALL_VELOCITY,
                                .y = DEFAULT_BALL_VELOCITY};
 
 typedef enum {
-  COLLISION_BRICK_LEFT = 0,
-  COLLISION_BRICK_RIGHT,
-  COLLISION_BRICK_UP,
-  COLLISION_BRICK_DOWN,
+  COLLISION_LEFT = 0,
+  COLLISION_RIGHT,
+  COLLISION_UP,
+  COLLISION_DOWN,
   COLLISION_NONE,
-} collision_brick_t;
+} CollisionSide;
 
-collision_brick_t CheckBallCollisionWithBrick(Vector2 ball, Rectangle brick) {
+CollisionSide CheckBallCollisionWithBrick(Vector2 ball, Rectangle brick) {
 
   // Check left and right
   //
@@ -61,25 +64,40 @@ collision_brick_t CheckBallCollisionWithBrick(Vector2 ball, Rectangle brick) {
     //
     if ((ball.x + BALL_RADIUS >= brick.x) &&
         (ball.x + BALL_RADIUS <= brick.x + 10)) {
-      return COLLISION_BRICK_LEFT;
+      return COLLISION_LEFT;
     } else if (((ball.x - BALL_RADIUS) <= (brick.x + brick.width)) &&
                ((ball.x - BALL_RADIUS) >= (brick.x + brick.width - 10))) {
-      return COLLISION_BRICK_RIGHT;
+      return COLLISION_RIGHT;
     }
   } else if ((ball.x - BALL_RADIUS >= brick.x) &&
              (ball.x + BALL_RADIUS <= brick.x + brick.width)) {
     if ((ball.y + BALL_RADIUS >= brick.y) &&
         (ball.y + BALL_RADIUS <= brick.y + 10)) {
-      return COLLISION_BRICK_UP;
+      return COLLISION_UP;
     } else if (((ball.y - BALL_RADIUS) <= (brick.y + brick.height)) &&
                ((ball.y - BALL_RADIUS) >= (brick.y + brick.height - 10))) {
-      return COLLISION_BRICK_DOWN;
+      return COLLISION_DOWN;
     }
   }
 
   return COLLISION_NONE;
 }
 
+CollisionSide getWallCollisionSide(Vector2 ball) {
+
+  if (ball.x - BALL_RADIUS <= 0.0f && ball.x - BALL_RADIUS >= -1.0f)
+    return COLLISION_LEFT;
+  if (ball.x + BALL_RADIUS >= SCREEN_WIDTH &&
+      ball.x + BALL_RADIUS <= SCREEN_WIDTH + 1.0f)
+    return COLLISION_RIGHT;
+  if (ball.y - BALL_RADIUS <= 0.0f && ball.y - BALL_RADIUS >= -1.0f)
+    return COLLISION_UP;
+  if (ball.y + BALL_RADIUS >= SCREEN_HEIGHT &&
+      ball.y + BALL_RADIUS <= SCREEN_HEIGHT + 1.0f)
+    return COLLISION_DOWN;
+
+  return COLLISION_NONE;
+}
 //------------------------------------------------------------------------------------
 // Program main entry point
 //------------------------------------------------------------------------------------
@@ -114,65 +132,80 @@ int main(void) {
   {
     // Update
     //----------------------------------------------------------------------------------
+    //
+
+    int keyPressed = GetKeyPressed();
+    if (IsKeyDown(KEY_A))
+      paddle.x -= 6;
+    if (IsKeyDown(KEY_D))
+      paddle.x += 6;
+
+    if (paddle.x <= 0)
+      paddle.x = 0;
+    if (paddle.x + paddle.width >= SCREEN_WIDTH)
+      paddle.x = SCREEN_WIDTH - paddle.width;
+
     ball.x += ballVelocity.x;
     ball.y += ballVelocity.y;
-    //
-    if (CheckCollisionPointLine(ball, (Vector2){.x = 0U, .y = 0U},
-                                (Vector2){.x = 0U, .y = SCREEN_HEIGHT}, 1)) {
-      ballVelocity.x *= -1.0f;
-    } else if (CheckCollisionPointLine(
-                   ball, (Vector2){.x = SCREEN_WIDTH, .y = 0U},
-                   (Vector2){.x = SCREEN_WIDTH, .y = SCREEN_HEIGHT}, 1)) {
-      ballVelocity.x *= -1.0f;
-    } else if (CheckCollisionPointLine(ball, (Vector2){.x = 0U, .y = 0U},
-                                       (Vector2){.x = SCREEN_WIDTH, .y = 0U},
-                                       1)) {
+
+    switch (getWallCollisionSide(ball)) {
+    case COLLISION_UP:
       ballVelocity.y *= -1.0f;
-    } else if (CheckCollisionPointLine(
-                   ball, (Vector2){.x = 0U, .y = SCREEN_HEIGHT},
-                   (Vector2){.x = SCREEN_WIDTH, .y = SCREEN_HEIGHT}, 1)) {
+      break;
+    case COLLISION_DOWN:
       ballVelocity.y *= -1.0f;
+      break;
+    case COLLISION_LEFT:
+      ballVelocity.x *= -1.0f;
+      break;
+    case COLLISION_RIGHT:
+      ballVelocity.x *= -1.0f;
+      break;
+    case COLLISION_NONE:
+      break;
+    default:
+      break;
     }
-
-    // Vector2 mousePos = GetMousePosition();
-    //
-    // ball.x = mousePos.x;
-    // ball.y = mousePos.y;
-
     for (int i = 0; i < BLOCK_COLS * BLOCK_ROWS; i++) {
       if (recHealth[i] == 0) {
         continue;
       }
-      switch (CheckBallCollisionWithBrick(ball, colorsRecs[i])) {
-      case COLLISION_BRICK_UP:
-        recHealth[i]--;
 
+      CollisionSide collisionSide =
+          CheckBallCollisionWithBrick(ball, colorsRecs[i]);
+
+      if (collisionSide != COLLISION_NONE) {
+        recHealth[i]--;
+      }
+
+      switch (collisionSide) {
+      case COLLISION_UP:
         colors[i] = GREEN;
         ballVelocity.y = -DEFAULT_BALL_VELOCITY;
-
         break;
-      case COLLISION_BRICK_DOWN:
-        recHealth[i]--;
+      case COLLISION_DOWN:
         ballVelocity.y = DEFAULT_BALL_VELOCITY;
         colors[i] = RED;
         break;
-      case COLLISION_BRICK_LEFT:
-        recHealth[i]--;
+      case COLLISION_LEFT:
         colors[i] = BLUE;
         ballVelocity.x = -DEFAULT_BALL_VELOCITY;
         break;
-      case COLLISION_BRICK_RIGHT:
-        recHealth[i]--;
+      case COLLISION_RIGHT:
         colors[i] = PINK;
         ballVelocity.x = DEFAULT_BALL_VELOCITY;
         break;
       case COLLISION_NONE:
         colors[i] = YELLOW;
-
       default:
         break;
       }
     }
+
+    if (ball.x - BALL_RADIUS >= paddle.x &&
+        ball.x + BALL_RADIUS <= paddle.x + paddle.width &&
+        ball.y + BALL_RADIUS >= paddle.y)
+      ballVelocity.y = -DEFAULT_BALL_VELOCITY;
     //----------------------------------------------------------------------------------
     // Draw
     //----------------------------------------------------------------------------------
@@ -189,6 +222,8 @@ int main(void) {
         DrawRectangleRec(colorsRecs[i], colors[i]);
       }
     }
+
+    DrawRectangleRounded(paddle, 0.9f, 1U, BLUE);
 
     EndDrawing();
     //----------------------------------------------------------------------------------
