@@ -35,17 +35,26 @@
 
 #define DEFAULT_BALL_VELOCITY (5.0f)
 
-static Color colors[BLOCK_ROWS * BLOCK_COLS];
-static Rectangle colorsRecs[BLOCK_ROWS * BLOCK_COLS];
-static uint32_t recHealth[BLOCK_ROWS * BLOCK_COLS];
-static Rectangle paddle = {.x = PADDLE_X_BASE_POS,
-                           .y = PADDLE_Y_BASE_POS,
-                           .width = PADDLE_WIDTH,
-                           .height = PADDLE_HEIGHT};
-static Vector2 ball = {.x = BALL_X_BASE, .y = BALL_Y_BASE};
-static Vector2 ballVelocity = {.x = DEFAULT_BALL_VELOCITY,
-                               .y = DEFAULT_BALL_VELOCITY};
+typedef struct {
+  Vector2 pos;
+  Vector2 velocity;
+  float radius;
+  Color color;
+} Ball_t;
 
+typedef struct {
+  Rectangle rec;
+  Color color;
+  uint32_t health;
+} Brick_t;
+
+typedef struct {
+  Rectangle rec;
+  Color color;
+  float speed;
+} Paddle_t;
+// check if collision is from left or right
+//
 typedef enum {
   COLLISION_LEFT = 0,
   COLLISION_RIGHT,
@@ -54,14 +63,24 @@ typedef enum {
   COLLISION_NONE,
 } CollisionSide;
 
-CollisionSide CheckBallCollisionWithBrick(Vector2 ball, Rectangle brick) {
+static Brick_t bricks[BLOCK_ROWS * BLOCK_COLS];
+static Paddle_t paddle = {.rec = (Rectangle){.x = PADDLE_X_BASE_POS,
+                                             .y = PADDLE_Y_BASE_POS,
+                                             .width = PADDLE_WIDTH,
+                                             .height = PADDLE_HEIGHT},
+                          .color = BLUE,
+                          .speed = 5.0f};
 
-  // Check left and right
-  //
+static Ball_t ball = {.pos = (Vector2){.x = BALL_X_BASE, .y = BALL_Y_BASE},
+                      .velocity = (Vector2){.x = DEFAULT_BALL_VELOCITY,
+                                            .y = DEFAULT_BALL_VELOCITY},
+                      .radius = BALL_RADIUS,
+                      .color = BLUE};
+
+CollisionSide CheckBallCollisionWithBrick(Vector2 ball, Rectangle brick) {
+  // check wheter collision is of up/down or left/right
   if ((ball.y - BALL_RADIUS >= brick.y - BALL_RADIUS) &&
       (ball.y + BALL_RADIUS <= brick.y + brick.height + BALL_RADIUS)) {
-    // check if collision is from left or right
-    //
     if ((ball.x + BALL_RADIUS >= brick.x) &&
         (ball.x + BALL_RADIUS <= brick.x + 10)) {
       return COLLISION_LEFT;
@@ -83,20 +102,33 @@ CollisionSide CheckBallCollisionWithBrick(Vector2 ball, Rectangle brick) {
   return COLLISION_NONE;
 }
 
-CollisionSide getWallCollisionSide(Vector2 ball) {
+CollisionSide getWallCollisionSide(Ball_t &ball) {
 
-  if (ball.x - BALL_RADIUS <= 0.0f && ball.x - BALL_RADIUS >= -1.0f)
+  if (ball.pos.x - ball.radius <= 0.0f && ball.pos.x - ball.radius >= -1.0f)
     return COLLISION_LEFT;
-  if (ball.x + BALL_RADIUS >= SCREEN_WIDTH &&
-      ball.x + BALL_RADIUS <= SCREEN_WIDTH + 1.0f)
+  if (ball.pos.x + ball.radius >= SCREEN_WIDTH &&
+      ball.pos.x + ball.radius <= SCREEN_WIDTH + 1.0f)
     return COLLISION_RIGHT;
-  if (ball.y - BALL_RADIUS <= 0.0f && ball.y - BALL_RADIUS >= -1.0f)
+  if (ball.pos.y - ball.radius <= 0.0f && ball.pos.y - BALL_RADIUS >= -1.0f)
     return COLLISION_UP;
-  if (ball.y + BALL_RADIUS >= SCREEN_HEIGHT &&
-      ball.y + BALL_RADIUS <= SCREEN_HEIGHT + 1.0f)
+  if (ball.pos.y + ball.radius >= SCREEN_HEIGHT &&
+      ball.pos.y + ball.radius <= SCREEN_HEIGHT + 1.0f)
     return COLLISION_DOWN;
 
   return COLLISION_NONE;
+}
+
+static void bricksInitialization(Brick_t *bricks, uint32_t bricks_cnt) {
+
+  for (int i = 0; i < bricks_cnt; i++) {
+    bricks[i].color = YELLOW;
+    bricks[i].rec = (Rectangle){
+        .x = 20.0f + 100.0f * (i % BLOCK_COLS) + 30.0f + (i % BLOCK_COLS),
+        .y = 80.0f + 50.0f * (i / BLOCK_COLS) + 20.0f * (i / BLOCK_COLS),
+        .width = 100.0f,
+        .height = 50.0f};
+    bricks[i].health = 2U;
+  }
 }
 //------------------------------------------------------------------------------------
 // Program main entry point
@@ -107,26 +139,10 @@ int main(void) {
   InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT,
              "raylib [shapes] example - colors palette");
 
-  for (int i = 0; i < BLOCKS_CNT; i++) {
-    colors[i] = YELLOW;
-  }
-
-  // Fills colorsRecs data (for every rectangle)
-  for (int i = 0; i < BLOCKS_CNT; i++) {
-    colorsRecs[i].width = 100.0f;
-    colorsRecs[i].height = 50.0f;
-    colorsRecs[i].x = 20.0f + colorsRecs[i].width * (i % BLOCK_COLS) +
-                      30.0f * (i % BLOCK_COLS);
-    colorsRecs[i].y = 80.0f + colorsRecs[i].height * (i / BLOCK_COLS) +
-                      20.0f * (i / BLOCK_COLS);
-    recHealth[i] = 2U;
-  }
-
-  int colorState[BLOCKS_CNT] = {0}; // Color state: 0-DEFAULT, 1-MOUSE_HOVER
-
+  bricksInitialization(bricks, BLOCKS_CNT);
   SetTargetFPS(60); // Set our game to run at 60 frames-per-second
-  //--------------------------------------------------------------------------------------
 
+  //--------------------------------------------------------------------------------------
   // Main game loop
   while (!WindowShouldClose()) // Detect window close button or ESC key
   {
@@ -134,78 +150,87 @@ int main(void) {
     //----------------------------------------------------------------------------------
     //
 
+    ball.color = BLUE;
     int keyPressed = GetKeyPressed();
     if (IsKeyDown(KEY_A))
-      paddle.x -= 6;
+      paddle.rec.x -= 6;
     if (IsKeyDown(KEY_D))
-      paddle.x += 6;
+      paddle.rec.x += 6;
 
-    if (paddle.x <= 0)
-      paddle.x = 0;
-    if (paddle.x + paddle.width >= SCREEN_WIDTH)
-      paddle.x = SCREEN_WIDTH - paddle.width;
+    if (paddle.rec.x <= 0)
+      paddle.rec.x = 0;
+    if (paddle.rec.x + paddle.rec.width >= SCREEN_WIDTH)
+      paddle.rec.x = SCREEN_WIDTH - paddle.rec.width;
 
-    ball.x += ballVelocity.x;
-    ball.y += ballVelocity.y;
+    ball.pos.x += ball.velocity.x;
+    ball.pos.y += ball.velocity.y;
+
+    // DEBUG
+    // ball.pos.x = GetMouseX();
+    // ball.pos.y = GetMouseY();
 
     switch (getWallCollisionSide(ball)) {
     case COLLISION_UP:
-      ballVelocity.y *= -1.0f;
+      ball.velocity.y = DEFAULT_BALL_VELOCITY;
+      ball.color = GREEN;
       break;
     case COLLISION_DOWN:
-      ballVelocity.y *= -1.0f;
+      ball.velocity.y = -DEFAULT_BALL_VELOCITY;
+      ball.color = GREEN;
       break;
     case COLLISION_LEFT:
-      ballVelocity.x *= -1.0f;
+      ball.velocity.x = DEFAULT_BALL_VELOCITY;
+      ball.color = GREEN;
       break;
     case COLLISION_RIGHT:
-      ballVelocity.x *= -1.0f;
+      ball.velocity.x = -DEFAULT_BALL_VELOCITY;
+      ball.color = GREEN;
       break;
     case COLLISION_NONE:
       break;
     default:
       break;
     }
+
     for (int i = 0; i < BLOCK_COLS * BLOCK_ROWS; i++) {
-      if (recHealth[i] == 0) {
+      if (bricks[i].health == 0) {
         continue;
       }
 
       CollisionSide collisionSide =
-          CheckBallCollisionWithBrick(ball, colorsRecs[i]);
+          CheckBallCollisionWithBrick(ball.pos, bricks[i].rec);
 
       if (collisionSide != COLLISION_NONE) {
-        recHealth[i]--;
+        bricks[i].health--;
+        ball.color = RED;
       }
-
       switch (collisionSide) {
       case COLLISION_UP:
-        colors[i] = GREEN;
-        ballVelocity.y = -DEFAULT_BALL_VELOCITY;
+        ball.velocity.y = -DEFAULT_BALL_VELOCITY;
         break;
       case COLLISION_DOWN:
-        ballVelocity.y = DEFAULT_BALL_VELOCITY;
-        colors[i] = RED;
+        ball.velocity.y = DEFAULT_BALL_VELOCITY;
         break;
       case COLLISION_LEFT:
-        colors[i] = BLUE;
-        ballVelocity.x = -DEFAULT_BALL_VELOCITY;
+        ball.velocity.x = -DEFAULT_BALL_VELOCITY;
         break;
       case COLLISION_RIGHT:
-        colors[i] = PINK;
-        ballVelocity.x = DEFAULT_BALL_VELOCITY;
+        ball.velocity.x = DEFAULT_BALL_VELOCITY;
         break;
       case COLLISION_NONE:
-        colors[i] = YELLOW;
+        bricks[i].color = YELLOW;
       default:
         break;
       }
     }
 
-    if (ball.x - BALL_RADIUS >= paddle.x &&
-        ball.x + BALL_RADIUS <= paddle.x + paddle.width &&
-        ball.y + BALL_RADIUS >= paddle.y)
-      ballVelocity.y = -DEFAULT_BALL_VELOCITY;
+    if (ball.pos.x - ball.radius >= paddle.rec.x &&
+        ball.pos.x + ball.radius <= paddle.rec.x + paddle.rec.width &&
+        ball.pos.y + ball.radius >= paddle.rec.y) {
+
+      ball.color = PINK;
+      ball.velocity.y = -DEFAULT_BALL_VELOCITY;
+    }
     //----------------------------------------------------------------------------------
     // Draw
     //----------------------------------------------------------------------------------
@@ -215,15 +240,15 @@ int main(void) {
 
     DrawText("Krezo breakout clone ", 28, 42, 20, BLACK);
 
-    DrawCircle(ball.x, ball.y, BALL_RADIUS, BLUE);
+    DrawCircle(ball.pos.x, ball.pos.y, ball.radius, ball.color);
     for (int i = 0; i < BLOCK_COLS * BLOCK_ROWS; i++) // Draw all rectangles
     {
-      if (recHealth[i] != 0) {
-        DrawRectangleRec(colorsRecs[i], colors[i]);
+      if (bricks[i].health != 0) {
+        DrawRectangleRec(bricks[i].rec, bricks[i].color);
       }
     }
 
-    DrawRectangleRounded(paddle, 0.9f, 1U, BLUE);
+    DrawRectangleRounded(paddle.rec, 0.9f, 1U, BLUE);
 
     EndDrawing();
     //----------------------------------------------------------------------------------
