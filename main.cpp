@@ -150,25 +150,30 @@ int main(void) {
     //----------------------------------------------------------------------------------
     //
 
-    ball.color = BLUE;
     int keyPressed = GetKeyPressed();
     if (IsKeyDown(KEY_A))
       paddle.rec.x -= 6;
     if (IsKeyDown(KEY_D))
       paddle.rec.x += 6;
 
+    // update pos
+    // DEBUG
+    // ball.pos.x = GetMouseX();
+    // ball.pos.y = GetMouseY();
+
+    ball.color = BLUE;
+    ball.pos.x += ball.velocity.x;
+    ball.pos.y += ball.velocity.y;
+
+    // check collisions
+
+    // paddle with walls
     if (paddle.rec.x <= 0)
       paddle.rec.x = 0;
     if (paddle.rec.x + paddle.rec.width >= SCREEN_WIDTH)
       paddle.rec.x = SCREEN_WIDTH - paddle.rec.width;
 
-    ball.pos.x += ball.velocity.x;
-    ball.pos.y += ball.velocity.y;
-
-    // DEBUG
-    // ball.pos.x = GetMouseX();
-    // ball.pos.y = GetMouseY();
-
+    // ball with walls
     switch (getWallCollisionSide(ball)) {
     case COLLISION_UP:
       ball.velocity.y = DEFAULT_BALL_VELOCITY;
@@ -192,6 +197,7 @@ int main(void) {
       break;
     }
 
+    // ball with bricks
     for (int i = 0; i < BLOCK_COLS * BLOCK_ROWS; i++) {
       if (bricks[i].health == 0) {
         continue;
@@ -224,6 +230,7 @@ int main(void) {
       }
     }
 
+    // ball with paddle
     if (ball.pos.x - ball.radius >= paddle.rec.x &&
         ball.pos.x + ball.radius <= paddle.rec.x + paddle.rec.width &&
         ball.pos.y + ball.radius >= paddle.rec.y) {
@@ -231,6 +238,7 @@ int main(void) {
       ball.color = PINK;
       ball.velocity.y = -DEFAULT_BALL_VELOCITY;
     }
+
     //----------------------------------------------------------------------------------
     // Draw
     //----------------------------------------------------------------------------------
@@ -241,13 +249,11 @@ int main(void) {
     DrawText("Krezo breakout clone ", 28, 42, 20, BLACK);
 
     DrawCircle(ball.pos.x, ball.pos.y, ball.radius, ball.color);
-    for (int i = 0; i < BLOCK_COLS * BLOCK_ROWS; i++) // Draw all rectangles
-    {
+    for (int i = 0; i < BLOCK_COLS * BLOCK_ROWS; i++) {
       if (bricks[i].health != 0) {
         DrawRectangleRec(bricks[i].rec, bricks[i].color);
       }
     }
-
     DrawRectangleRounded(paddle.rec, 0.9f, 1U, BLUE);
 
     EndDrawing();
