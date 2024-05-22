@@ -77,24 +77,27 @@ static Ball_t ball = {.pos = (Vector2){.x = BALL_X_BASE, .y = BALL_Y_BASE},
                       .radius = BALL_RADIUS,
                       .color = BLUE};
 
-CollisionSide CheckBallCollisionWithBrick(Vector2 ball, Rectangle brick) {
+CollisionSide CheckBallCollisionWithBrick(Ball_t *ball, Rectangle brick,
+                                          float threshold) {
   // check wheter collision is of up/down or left/right
-  if ((ball.y - BALL_RADIUS >= brick.y - BALL_RADIUS) &&
-      (ball.y + BALL_RADIUS <= brick.y + brick.height + BALL_RADIUS)) {
-    if ((ball.x + BALL_RADIUS >= brick.x) &&
-        (ball.x + BALL_RADIUS <= brick.x + 10)) {
+  if ((ball->pos.y - ball->radius >= brick.y - ball->radius) &&
+      (ball->pos.y + ball->radius <= brick.y + brick.height + ball->radius)) {
+    if ((ball->pos.x + ball->radius >= brick.x) &&
+        (ball->pos.x + ball->radius <= brick.x + threshold)) {
       return COLLISION_LEFT;
-    } else if (((ball.x - BALL_RADIUS) <= (brick.x + brick.width)) &&
-               ((ball.x - BALL_RADIUS) >= (brick.x + brick.width - 10))) {
+    } else if (((ball->pos.x - ball->radius) <= (brick.x + brick.width)) &&
+               ((ball->pos.x - ball->radius) >=
+                (brick.x + brick.width - threshold))) {
       return COLLISION_RIGHT;
     }
-  } else if ((ball.x - BALL_RADIUS >= brick.x) &&
-             (ball.x + BALL_RADIUS <= brick.x + brick.width)) {
-    if ((ball.y + BALL_RADIUS >= brick.y) &&
-        (ball.y + BALL_RADIUS <= brick.y + 10)) {
+  } else if ((ball->pos.x - ball->radius >= brick.x) &&
+             (ball->pos.x + ball->radius <= brick.x + brick.width)) {
+    if ((ball->pos.y + ball->radius >= brick.y) &&
+        (ball->pos.y + ball->radius <= brick.y + threshold)) {
       return COLLISION_UP;
-    } else if (((ball.y - BALL_RADIUS) <= (brick.y + brick.height)) &&
-               ((ball.y - BALL_RADIUS) >= (brick.y + brick.height - 10))) {
+    } else if (((ball->pos.y - ball->radius) <= (brick.y + brick.height)) &&
+               ((ball->pos.y - ball->radius) >=
+                (brick.y + brick.height - threshold))) {
       return COLLISION_DOWN;
     }
   }
@@ -104,15 +107,15 @@ CollisionSide CheckBallCollisionWithBrick(Vector2 ball, Rectangle brick) {
 
 CollisionSide getWallCollisionSide(Ball_t &ball) {
 
-  if (ball.pos.x - ball.radius <= 0.0f && ball.pos.x - ball.radius >= -1.0f)
+  if (ball.pos.x - ball.radius <= 0.0f && ball.pos.x - ball.radius >= -4.0f)
     return COLLISION_LEFT;
   if (ball.pos.x + ball.radius >= SCREEN_WIDTH &&
-      ball.pos.x + ball.radius <= SCREEN_WIDTH + 1.0f)
+      ball.pos.x + ball.radius <= SCREEN_WIDTH + 4.0f)
     return COLLISION_RIGHT;
-  if (ball.pos.y - ball.radius <= 0.0f && ball.pos.y - BALL_RADIUS >= -1.0f)
+  if (ball.pos.y - ball.radius <= 0.0f && ball.pos.y - BALL_RADIUS >= -4.0f)
     return COLLISION_UP;
   if (ball.pos.y + ball.radius >= SCREEN_HEIGHT &&
-      ball.pos.y + ball.radius <= SCREEN_HEIGHT + 1.0f)
+      ball.pos.y + ball.radius <= SCREEN_HEIGHT + 4.0f)
     return COLLISION_DOWN;
 
   return COLLISION_NONE;
@@ -156,6 +159,10 @@ int main(void) {
     if (IsKeyDown(KEY_D))
       paddle.rec.x += 6;
 
+    // if (IsKeyDown(KEY_W))
+    //   ball.velocity.x += 0.001f;
+    // if (IsKeyDown(KEY_S))
+    //   ball.velocity.x -= 0.001f;
     // update pos
     // DEBUG
     // ball.pos.x = GetMouseX();
@@ -204,7 +211,7 @@ int main(void) {
       }
 
       CollisionSide collisionSide =
-          CheckBallCollisionWithBrick(ball.pos, bricks[i].rec);
+          CheckBallCollisionWithBrick(&ball, bricks[i].rec, 5.0f);
 
       if (collisionSide != COLLISION_NONE) {
         bricks[i].health--;
@@ -234,7 +241,6 @@ int main(void) {
     if (ball.pos.x - ball.radius >= paddle.rec.x &&
         ball.pos.x + ball.radius <= paddle.rec.x + paddle.rec.width &&
         ball.pos.y + ball.radius >= paddle.rec.y) {
-
       ball.color = PINK;
       ball.velocity.y = -DEFAULT_BALL_VELOCITY;
     }
